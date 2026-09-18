@@ -1,0 +1,92 @@
+# Copy to config.toml and fill in keys.
+# python -m app.main --mode text
+# python -m app.main --mode mic
+
+[auth]
+# Duplex realtime API key (X-Api-Key)
+api_key = ""
+# Required product grant for end-to-end realtime dialogue.
+resource_id = "volc.speech.dialog"
+# Optional; some accounts still bind the key to an App ID.
+app_id = ""
+
+[llm]
+# OpenAI-compatible Chat Completions. Used by --mode text, item generation, and analysis.
+# Any compatible endpoint works (DashScope, Volcengine Ark, ...).
+base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+api_key = ""
+model = "qwen3.8-flash"
+
+[session]
+# Duplex realtime model id from the official demo / console.
+# Docs: https://www.volcengine.com/docs/6561/1816214
+model = "1.2.6.1"
+# Sent on the wire as session.audio.output.voice (local aliases: voice or speaker).
+# Use 2.0 / 全双工音色（*_uranus_bigtts），不要用 1.0 mars 系列。
+# 英文推荐：en_female_dacey_uranus_bigtts / en_female_stokie_uranus_bigtts / en_male_tim_uranus_bigtts
+# 英式教学：zh_female_yingyujiaoxue_uranus_bigtts
+# 完整列表：https://www.volcengine.com/docs/6561/1257544
+voice = "en_female_dacey_uranus_bigtts"
+# Duplex TTS rate/loudness: integer [-50, 100]. 0 = default.
+# Wire fields: session.audio.output.speed / loudness. Aliases: speech_rate / loudness_rate.
+speed = 0.8
+loudness = 0
+asr_format = "pcm"
+tts_format = "pcm_s16le"
+# Optional playback device name substring, e.g. "Speakers" or "Portacapture".
+# Empty uses the system default; headphone "2nd output" is auto-avoided when possible.
+output_device = ""
+
+[endpoint]
+url = "wss://openspeech.bytedance.com/api/v3/duplex/realtime/dialogue"
+
+[voice]
+# duplex = Volcengine end-to-end realtime dialogue (current)
+# pipeline = custom ASR + LLM + TTS (not implemented yet)
+backend = "duplex"
+
+[voice.rvc]
+# Optional local RVC on TTS playback. Needs third_party/rvc + model_cache weights.
+# python -m scripts.setup_rvc
+# SDK: from app.voice.rvc_sdk import RvcConverter
+enabled = true
+mode = "utterance"
+# 越像目标音色：先加 index_rate，再降 protect。音高不对再动 f0_up_key；rms_mix_rate 越低越保留原始 TTS 响度。
+f0_up_key = -1
+index_rate = 0.66
+protect = 0.1
+rms_mix_rate = 0.25
+pad_seconds = 1.0
+# Optional overrides; defaults live in app/voice/rvc_engine.py
+# pth = "model_cache/KFK_V2_500.pth/KFK_V2_500.pth"
+# index = "model_cache/KFK_V2_500.pth/added_IVF3491_Flat_nprobe_1_KFK_V2_500_v2.index"
+
+[voice.uplink_gate]
+delta_idle_seconds = 6
+commit_timeout_seconds = 3
+mute_during_tts = true
+# Wait this long after the last PCM chunk is written to the speaker
+# before unmuting the uplink. Covers remaining DAC buffer after write().
+unmute_holdoff_seconds = 0.08
+
+[logging]
+session_dir = "data/sessions"
+items_dir = "data/items"
+
+[prompt]
+assembler = "scene_practice"
+
+[itemgen]
+# Extra LLM calls after the first if JSON parse/shape fails. 2 → 3 attempts total.
+parse_retries = 2
+
+[avatar]
+# THA3 1x RGB for the future UI corner. Weights: model_cache/tha3/separable_float/
+# Preview stand-in: python -m app.avatar
+# With mic: python -m app.main --mode mic --avatar
+enabled = true
+show_preview = false
+character = "data/avatar/kafka_512.png"
+weights_dir = "model_cache/tha3/separable_float"
+display_scale = 1
+fps = 15

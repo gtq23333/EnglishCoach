@@ -1,0 +1,57 @@
+# Local secrets — never commit real keys
+config.toml
+.env
+.env.*
+!.env.example
+
+# Editor / IDE
+.cursor/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+env/
+
+# OS / junk from archives
+.DS_Store
+Thumbs.db
+desktop.ini
+__MACOSX/
+._*
+
+# Runtime user data (practice transcripts / generated items)
+data/sessions/*.jsonl
+data/sessions/*.errors.jsonl
+data/items/*.json
+*.pcm
+output.pcm
+*.wav
+*.mp3
+*.log
+logs/
+
+# Local model weights and vendor checkouts (hundreds of MB)
+model_cache/
+third_party/rvc/
+*.pt
+*.pth
+*.onnx
+*.safetensors
+*.ckpt
+*.bin
+*.index
+*.part
+hf_cache/
+.cache/

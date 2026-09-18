@@ -1,0 +1,16 @@
+# Inference-only extras for app.voice.rvc_engine (no Gradio / no official WebUI pin).
+#
+# Torch must be CUDA 12.8+ on RTX 50-series. Install into talking first:
+#   python -m pip install --isolated torch torchaudio --index-url https://download.pytorch.org/whl/cu128
+#   python -m pip install -r requirements-rvc.txt
+#
+# Do NOT pip the upstream RVC requirements.txt (it pins fastapi==0.88 / Gradio).
+# fairseq has no Python 3.11 Windows wheel; transformers Hubert is the fallback.
+
+numpy
+scipy
+soundfile>=0.12.1
+librosa>=0.10.0
+faiss-cpu
+tqdm
+transformers

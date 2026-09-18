@@ -1,0 +1,6 @@
+RVC_REPO=https://gitee.com/tizi8/Retrieval-based-Voice-Conversion-WebUI.git
+RVC_UPSTREAM=https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI
+HUBERT_RMVPE=https://huggingface.co/lj1995/VoiceConversionWebUI
+SETUP=python -m scripts.setup_rvc
+SDK=app.voice.rvc_sdk.RvcConverter
+NOTE=Do not launch infer-web.py / go-web.bat; this checkout is a library.
