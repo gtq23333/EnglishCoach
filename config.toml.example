@@ -29,8 +29,8 @@ model = "1.2.6.1"
 voice = "en_female_dacey_uranus_bigtts"
 # Duplex TTS rate/loudness: integer [-50, 100]. 0 = default.
 # Wire fields: session.audio.output.speed / loudness. Aliases: speech_rate / loudness_rate.
-speed = 0.8
-loudness = 0
+speed = 0.5
+loudness = -2
 asr_format = "pcm"
 tts_format = "pcm_s16le"
 # Optional playback device name substring, e.g. "Speakers" or "Portacapture".
@@ -79,6 +79,11 @@ assembler = "scene_practice"
 [itemgen]
 # Extra LLM calls after the first if JSON parse/shape fails. 2 → 3 attempts total.
 parse_retries = 2
+
+[store]
+# Local learning library (MCQ / sentence pairs / quiz attempts). Not committed.
+db_path = "data/coach.sqlite"
+owner_id = "local"
 
 [avatar]
 # THA3 1x RGB for the future UI corner. Weights: model_cache/tha3/separable_float/

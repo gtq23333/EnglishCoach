@@ -42,6 +42,7 @@ class AppConfig:
     commit_timeout_seconds: float = 3.0
     mute_during_tts: bool = True
     unmute_holdoff_seconds: float = 0.08
+    max_speech_seconds: float = 0.0
     tts_speed: int = 0
     tts_loudness: int = 0
     itemgen_parse_retries: int = 2
@@ -64,7 +65,10 @@ class AppConfig:
     avatar_weights_dir: str = "model_cache/tha3/separable_float"
     avatar_fps: float = 15.0
     avatar_display_scale: int = 1
+    db_path: str = "data/coach.sqlite"
+    owner_id: str = "local"
     raw: Dict[str, Any] = field(default_factory=dict)
+    config_path: str = ""
 
 
 def _section(data: Dict[str, Any], name: str) -> Dict[str, Any]:
@@ -88,7 +92,7 @@ def load_config(path: Union[str, Path] = "config.toml") -> AppConfig:
     prompt = _section(data, "prompt")
     voice = _section(data, "voice")
 
-    cfg = AppConfig(raw=data)
+    cfg = AppConfig(raw=data, config_path=str(config_path.resolve()))
     cfg.api_key = auth.get("api_key") or cfg.api_key
     cfg.resource_id = auth.get("resource_id") or cfg.resource_id
     cfg.app_id = auth.get("app_id") or cfg.app_id
@@ -128,6 +132,8 @@ def load_config(path: Union[str, Path] = "config.toml") -> AppConfig:
         cfg.unmute_holdoff_seconds = float(gate["unmute_holdoff_seconds"])
     elif "unmute_holdoff_ms" in gate:
         cfg.unmute_holdoff_seconds = float(gate["unmute_holdoff_ms"]) / 1000.0
+    if "max_speech_seconds" in gate:
+        cfg.max_speech_seconds = float(gate["max_speech_seconds"])
     itemgen = _section(data, "itemgen")
     if "parse_retries" in itemgen:
         cfg.itemgen_parse_retries = int(itemgen["parse_retries"])
@@ -171,4 +177,10 @@ def load_config(path: Union[str, Path] = "config.toml") -> AppConfig:
             cfg.avatar_fps = float(avatar["fps"])
         if "display_scale" in avatar:
             cfg.avatar_display_scale = int(avatar["display_scale"])
+    store = _section(data, "store")
+    if store:
+        if "db_path" in store:
+            cfg.db_path = str(store["db_path"])
+        if "owner_id" in store:
+            cfg.owner_id = str(store["owner_id"]) or cfg.owner_id
     return cfg

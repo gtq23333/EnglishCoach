@@ -48,6 +48,16 @@ def _patch_torch_load() -> None:
     torch.load = _load  # type: ignore[method-assign]
 
 
+def character_preview_rgb(character: Path | str) -> np.ndarray:
+    """Static cropped RGB of the character sheet — usable before the GPU poser loads."""
+    character_path = Path(character)
+    pil = Image.open(character_path).convert("RGBA").resize((512, 512), Image.Resampling.LANCZOS)
+    cropped = pil.crop(character_crop_box(pil))
+    rgb = Image.new("RGB", cropped.size, VIEW_BG)
+    rgb.paste(cropped, mask=cropped.split()[-1])
+    return np.asarray(rgb, dtype=np.uint8)
+
+
 def character_crop_box(rgba: Image.Image, pad: int = CROP_PAD) -> Tuple[int, int, int, int]:
     alpha = np.asarray(rgba.split()[-1])
     ys, xs = np.where(alpha > 16)
@@ -169,3 +179,32 @@ class AvatarEngine:
 
     def latest_frame(self) -> Optional[np.ndarray]:
         return self._latest
+
+
+_ENGINE_CACHE: dict[tuple[str, str, str], AvatarEngine] = {}
+
+
+def get_or_create_avatar_engine(
+    character: Path | str = DEFAULT_CHARACTER,
+    weights_dir: Path | str = DEFAULT_WEIGHTS,
+    device: Optional[str] = None,
+) -> AvatarEngine:
+    """Reuse the process-level THA3 poser. Reloading it every call fights RVC for CUDA."""
+    from app.gpu import LOAD_LOCK
+
+    key = (
+        str(Path(character).resolve()),
+        str(Path(weights_dir).resolve()),
+        device or "",
+    )
+    with LOAD_LOCK:
+        cached = _ENGINE_CACHE.get(key)
+        if cached is not None:
+            return cached
+        engine = AvatarEngine(character, weights_dir, device=device)
+        _ENGINE_CACHE[key] = engine
+        return engine
+
+
+def reset_avatar_engine_cache() -> None:
+    _ENGINE_CACHE.clear()

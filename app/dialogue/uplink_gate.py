@@ -20,6 +20,7 @@ class UplinkGate:
         mute_during_tts: bool = True,
         complete_unmute_seconds: float = 2.0,
         unmute_holdoff_seconds: float = 0.08,
+        max_speech_seconds: float = 0.0,
         clock: Optional[Clock] = None,
     ):
         self.delta_idle_seconds = float(delta_idle_seconds)
@@ -27,10 +28,12 @@ class UplinkGate:
         self.mute_during_tts = bool(mute_during_tts)
         self.complete_unmute_seconds = float(complete_unmute_seconds)
         self.unmute_holdoff_seconds = float(unmute_holdoff_seconds)
+        self.max_speech_seconds = float(max_speech_seconds)
         self._clock = clock or time.monotonic
         self.uplink_enabled = True
         self.mute_reason: Optional[str] = None
         self._speech_open = False
+        self._speech_started_at: Optional[float] = None
         self._last_nonempty_at: Optional[float] = None
         self._silenced_at: Optional[float] = None
         self._completed_at: Optional[float] = None
@@ -41,8 +44,10 @@ class UplinkGate:
         self._playback_idle_at: Optional[float] = None
 
     def on_speech_started(self) -> List[str]:
+        now = self._clock()
         self._speech_open = True
-        self._last_nonempty_at = self._clock()
+        self._speech_started_at = now
+        self._last_nonempty_at = now
         self._completed_at = None
         self._commit_sent = False
         return self.tick()
@@ -54,9 +59,17 @@ class UplinkGate:
 
     def on_completed(self) -> List[str]:
         self._speech_open = False
+        self._speech_started_at = None
         self._last_nonempty_at = None
         self._completed_at = self._clock()
         return self.tick()
+
+    def on_backend_reset(self) -> List[str]:
+        self._speech_open = False
+        self._speech_started_at = None
+        self._last_nonempty_at = None
+        self._completed_at = None
+        return self._mute("voice_reconnect")
 
     def on_tts_started(self) -> List[str]:
         self._tts_playing = True
@@ -86,6 +99,17 @@ class UplinkGate:
     def tick(self) -> List[str]:
         now = self._clock()
         actions: List[str] = []
+        if (
+            self.uplink_enabled
+            and self._speech_open
+            and self._speech_started_at is not None
+            and self.max_speech_seconds > 0
+            and now - self._speech_started_at >= self.max_speech_seconds
+        ):
+            actions.extend(self._mute("max_speech"))
+            if not self._commit_sent:
+                self._commit_sent = True
+                actions.append("commit")
         if (
             self.uplink_enabled
             and self._speech_open

@@ -84,11 +84,17 @@ def _from_letters(text: str) -> Timeline:
     return keys
 
 
+def _idle_talk(duration_s: float) -> Timeline:
+    """Fallback mouth cycle when TTS audio starts before the transcript arrives."""
+    cycles = max(1, int(round(max(duration_s, 0.4) / 0.45)))
+    return _from_letters(("a e i o u ") * cycles)
+
+
 def plan_visemes(text: str, duration_s: float) -> Timeline:
     """Return a mouth timeline in seconds, ending at ``duration_s``."""
     normalized = _normalize(text)
     if not normalized:
-        return [(0.0, {}), (max(duration_s, 0.12), {})]
+        return _stretch(_idle_talk(duration_s), duration_s)
     if normalized.rstrip(".!?") == HELLO_PHRASE.rstrip("."):
         base = HELLO_TIMELINE
     else:

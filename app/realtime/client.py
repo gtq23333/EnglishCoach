@@ -76,7 +76,12 @@ class RealtimeClient:
         if self.cfg.app_id:
             headers["X-Api-App-Id"] = self.cfg.app_id
         print(f"connect url={self.cfg.endpoint_url}")
-        connect_kwargs: Dict[str, Any] = {"ping_interval": None}
+        connect_kwargs: Dict[str, Any] = {
+            # Official duplex keepalive is 20ms audio frames, not WebSocket ping.
+            "ping_interval": None,
+            "open_timeout": 10,
+            "close_timeout": 3,
+        }
         try:
             try:
                 self.ws = await websockets.connect(
@@ -130,7 +135,24 @@ class RealtimeClient:
             await self._wait_session_closed()
         except Exception as e:
             print(f"session.close error: {e}")
-        await self.ws.close()
+        await self._drop_ws()
+
+    async def hard_reset(self) -> None:
+        """Drop a dead websocket without waiting for a graceful session.close."""
+        await self._drop_ws()
+        self.session_id = str(uuid.uuid4())
+        self.dialog_id = ""
+        self._event_id = 0
+
+    async def _drop_ws(self) -> None:
+        old = self.ws
+        self.ws = None
+        if old is None:
+            return
+        try:
+            await asyncio.wait_for(old.close(), timeout=1.0)
+        except Exception:
+            pass
 
     async def _wait_session_closed(self, timeout: float = 3.0) -> None:
         loop = asyncio.get_event_loop()

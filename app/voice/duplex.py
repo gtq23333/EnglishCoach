@@ -180,5 +180,9 @@ class DuplexVoiceBackend(VoiceBackend):
             if mapped is not None:
                 return mapped
 
+    async def reconnect(self, instructions: str, tools: List[Dict[str, Any]]) -> None:
+        await self._client.hard_reset()
+        await self.start(instructions, tools)
+
     async def close(self) -> None:
         await self._client.close()

@@ -45,6 +45,11 @@ class VoiceBackend(ABC):
     async def commit_audio(self) -> None:
         """Force endpoint detection. Duplex implements this; others may no-op."""
 
+    async def reconnect(self, instructions: str, tools: List[Dict[str, Any]]) -> None:
+        """Replace a dead transport and open a new dialogue session."""
+        await self.close()
+        await self.start(instructions, tools)
+
     @abstractmethod
     async def close(self) -> None:
         """Tear down the session and transport."""

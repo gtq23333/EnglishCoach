@@ -86,3 +86,10 @@ def test_session_config_includes_voice_speed_loudness():
     output = hot.build_session_config()[0]["audio"]["output"]
     assert output["speed"] == 100
     assert output["loudness"] == -50
+
+
+def test_session_config_uses_live_mic_not_keepalive_mod():
+    from app.realtime.client import RealtimeClient
+
+    _session, extension = RealtimeClient(AppConfig(), "sid").build_session_config()
+    assert extension["dialog"]["extra"].get("input_mod") in (None, "")

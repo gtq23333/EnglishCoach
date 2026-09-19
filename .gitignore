@@ -35,6 +35,9 @@ __MACOSX/
 data/sessions/*.jsonl
 data/sessions/*.errors.jsonl
 data/items/*.json
+data/*.sqlite
+data/*.sqlite-wal
+data/*.sqlite-shm
 *.pcm
 output.pcm
 *.wav
@@ -55,3 +58,7 @@ third_party/rvc/
 *.part
 hf_cache/
 .cache/
+
+# Vue frontend
+web/node_modules/
+web/dist/

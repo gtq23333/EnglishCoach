@@ -129,3 +129,39 @@ items_dir = "data/items"
     cfg = load_config(path)
     assert cfg.session_dir == "data/sessions"
     assert cfg.items_dir == "data/items"
+
+
+def test_load_config_store_section(tmp_path: Path):
+    path = tmp_path / "config.toml"
+    path.write_text(
+        """
+[auth]
+api_key = "k"
+
+[store]
+db_path = "data/coach.sqlite"
+owner_id = "local"
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    cfg = load_config(path)
+    assert cfg.db_path == "data/coach.sqlite"
+    assert cfg.owner_id == "local"
+
+
+def test_load_config_max_speech_seconds(tmp_path: Path):
+    path = tmp_path / "config.toml"
+    path.write_text(
+        """
+[auth]
+api_key = "k"
+
+[voice.uplink_gate]
+max_speech_seconds = 25
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    cfg = load_config(path)
+    assert cfg.max_speech_seconds == 25

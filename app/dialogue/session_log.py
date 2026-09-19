@@ -82,3 +82,11 @@ class SessionLog:
 def load_records(path: Union[str, Path]) -> list[dict]:
     text = Path(path).read_text(encoding="utf-8")
     return [json.loads(line) for line in text.splitlines() if line.strip()]
+
+
+def write_records(path: Union[str, Path], records: list[dict]) -> None:
+    target = Path(path)
+    tmp = target.with_suffix(target.suffix + ".tmp")
+    lines = [json.dumps(row, ensure_ascii=False) for row in records]
+    tmp.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+    tmp.replace(target)

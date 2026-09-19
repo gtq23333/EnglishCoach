@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -12,6 +13,9 @@ from app.items.gate import admit_case
 from app.items.prompt import ITEMGEN_SYSTEM_PROMPT, SKIP_PREFIXES
 from app.items.slicer import slice_keep_turns
 from app.llm import LLMClient
+
+
+logger = logging.getLogger(__name__)
 
 
 FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.I | re.M)
@@ -88,13 +92,25 @@ async def _chat_json_with_retries(
     raw = ""
     for attempt in range(1, attempts + 1):
         try:
+            if progress:
+                progress(
+                    "itemgen.progress",
+                    {
+                        "stage": "llm",
+                        "slice": slice_index,
+                        "attempt": attempt,
+                    },
+                )
+            logger.info(
+                "itemgen llm slice=%s attempt=%s/%s", slice_index, attempt, attempts
+            )
             result = await llm.chat(
                 messages=messages,
                 response_format={"type": "json_object"},
             )
             raw = result.content or ""
             return parse_model_json(raw)
-        except Exception as exc:
+        except ItemGenError as exc:
             last_error = exc
             if attempt >= attempts:
                 break
@@ -119,9 +135,17 @@ async def _chat_json_with_retries(
                     },
                 ]
             raw = ""
-    raise ItemGenError(
-        f"parse failed after {attempts} attempts: {last_error}"
-    ) from last_error
+        except Exception as exc:
+            last_error = exc
+            logger.exception(
+                "itemgen llm call failed slice=%s attempt=%s", slice_index, attempt
+            )
+            break
+    if isinstance(last_error, ItemGenError):
+        raise ItemGenError(
+            f"JSON parse failed after {attempts} attempts: {last_error}"
+        ) from last_error
+    raise ItemGenError(f"LLM call failed: {last_error}") from last_error
 
 
 def _scene_from_records(records: List[dict]) -> dict:

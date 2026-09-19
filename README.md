@@ -2,7 +2,9 @@
 
 端到端英语情景口语对练助手：麦克风全双工实时对话，主 Agent 只做角色扮演，不打断纠错；会话会落盘，不够地道的表达可事后生成练习题。
 
-语音走火山引擎端到端全双工（[文档](https://docs.volcengine.com/docs/6561/2549778?lang=zh)）；文本模式、分析和出题走 OpenAI 兼容 Chat Completions。可选本地 RVC 变声，以及 THA3 口型数字人预览。
+语音走火山引擎端到端全双工（[文档](https://docs.volcengine.com/docs/6561/2549778?lang=zh)）；文本模式、分析和出题走 OpenAI 兼容 Chat Completions。可选本地 RVC 变声，以及 THA3 口型数字人预览。网页端（`web/`）提供对练、复习和学习库。
+
+![网页对练界面](concept.png)
 
 ## 功能
 
@@ -10,8 +12,8 @@
 - **全双工语音**：`python -m app.main --mode mic`
 - **纯文本调试**：`python -m app.main --mode text`（不需要声卡）
 - **会话记录**：`data/sessions/<session_id>.jsonl`
-- **练习题生成**：从 jsonl 抽题，`python -m app.items <session_id>`
-- **本地 HTTP API**：`python -m app.serve`（默认 `127.0.0.1:8765`）
+- **练习题生成**：从 jsonl 抽题，`python -m app.items <session_id>`；灌入本地学习库 `python -m app.library ingest <session_id>`
+- **本地 HTTP API / 网页**：`python -m app.serve`（默认 `127.0.0.1:8765`）；前端 `web/`（Vue 3）
 - **可选 RVC**：TTS 播放前做音色转换
 - **可选 THA3 数字人**：`python -m app.main --mode mic --avatar`，或 `python -m app.avatar`
 
@@ -50,8 +52,16 @@ python -m app.main --mode mic --avatar
 python -m app.main --no-avatar
 
 python -m app.items <session_id>
+python -m app.library ingest <session_id>
 python -m app.serve
 python -m app.avatar
+
+# 网页（另开终端）
+cd web
+npm install
+npm run dev          # http://127.0.0.1:5173 ，/v1 代理到 8765
+npm run build        # 产物 web/dist，可由 python -m app.serve 直接托管
+
 ```
 
 退出：文本模式输入 `quit` / `exit` / `q`，或 Ctrl+C。
@@ -99,7 +109,8 @@ python -m scripts.setup_rvc
 | 类别 | 路径 |
 | --- | --- |
 | API Key | `config.toml` |
-| 对练记录 / 练习题 | `data/sessions/*.jsonl`、`data/items/*.json` |
+| 对练记录 / 练习题快照 | `data/sessions/*.jsonl`、`data/items/*.json` |
+| 学习库 | `data/coach.sqlite`（题、测验、背记进度） |
 | 模型权重 | `model_cache/`（RVC 说话人、Hubert、RMVPE、THA3 等） |
 | RVC 上游仓库 | `third_party/rvc/` |
 | 编辑器目录 | `.cursor/`、`.vscode/` |

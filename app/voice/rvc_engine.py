@@ -202,14 +202,22 @@ class PlaybackRvc:
             )
 
         if self.index_rate > 0 and self.paths.index.exists():
-            import faiss
-
-            self._index = faiss.read_index(str(self.paths.index))
             try:
-                self._index.nprobe = max(8, int(getattr(self._index, "nprobe", 1) or 1))
-            except Exception:
-                pass
-            self._big_npy = self._index.reconstruct_n(0, self._index.ntotal)
+                import faiss
+
+                self._index = faiss.read_index(str(self.paths.index))
+                try:
+                    self._index.nprobe = max(8, int(getattr(self._index, "nprobe", 1) or 1))
+                except Exception:
+                    pass
+                self._big_npy = self._index.reconstruct_n(0, self._index.ntotal)
+            except ImportError:
+                logger.warning(
+                    "faiss is not installed; RVC will run without the retrieval index. "
+                    "Install with: pip install faiss-cpu"
+                )
+                self._index = None
+                self._big_npy = None
 
         self._to16 = Resample(
             orig_freq=self.playback_sr, new_freq=HUBERT_SR, dtype=torch.float32
@@ -678,16 +686,27 @@ def _load_hubert_contentvec(device, is_half):
         model = HubertModelWithFinalProj.from_pretrained(
             model_id, cache_dir=str(cache_dir), local_files_only=True
         )
-    except Exception:
-        logger.info("Downloading ContentVec embedder %s", model_id)
-        model = HubertModelWithFinalProj.from_pretrained(
-            model_id, cache_dir=str(cache_dir)
-        )
+    except Exception as exc:
+        raise RuntimeError(
+            "ContentVec 本地缓存缺失（lengyue233/content-vec-best）。"
+            "通话中不会访问 HuggingFace。请把模型放到 "
+            f"{cache_dir} 后再开变声。"
+        ) from exc
     model = model.to(device)
     model = model.half() if is_half else model.float()
     model.eval()
     logger.info("Using ContentVec Hubert (%s)", model_id)
     return _HubertAdapter(model)
+
+
+_PLAYBACK_CACHE: Optional[PlaybackRvc] = None
+_PLAYBACK_CACHE_KEY: Optional[tuple] = None
+
+
+def reset_playback_rvc_cache() -> None:
+    global _PLAYBACK_CACHE, _PLAYBACK_CACHE_KEY
+    _PLAYBACK_CACHE = None
+    _PLAYBACK_CACHE_KEY = None
 
 
 def load_playback_rvc(
@@ -708,6 +727,8 @@ def load_playback_rvc(
 ) -> Optional[PlaybackRvc]:
     if not enabled:
         return None
+    from app.gpu import LOAD_LOCK
+
     paths = RvcPaths()
     if pth:
         paths.model_pth = Path(pth)
@@ -725,16 +746,36 @@ def load_playback_rvc(
         paths.rmvpe = Path(rmvpe)
         if not paths.rmvpe.is_absolute():
             paths.rmvpe = ROOT / paths.rmvpe
-    engine = PlaybackRvc(
-        paths,
-        f0_up_key=f0_up_key,
-        index_rate=index_rate,
-        hop_seconds=hop_seconds,
-        extra_seconds=extra_seconds,
-        mode=mode,
-        protect=protect,
-        pad_seconds=pad_seconds,
-        rms_mix_rate=rms_mix_rate,
+    key = (
+        str(paths.model_pth),
+        str(paths.index),
+        str(paths.hubert),
+        str(paths.rmvpe),
+        f0_up_key,
+        index_rate,
+        hop_seconds,
+        extra_seconds,
+        mode,
+        protect,
+        pad_seconds,
+        rms_mix_rate,
     )
-    engine.load()
-    return engine
+    global _PLAYBACK_CACHE, _PLAYBACK_CACHE_KEY
+    with LOAD_LOCK:
+        if _PLAYBACK_CACHE is not None and _PLAYBACK_CACHE_KEY == key:
+            return _PLAYBACK_CACHE
+        engine = PlaybackRvc(
+            paths,
+            f0_up_key=f0_up_key,
+            index_rate=index_rate,
+            hop_seconds=hop_seconds,
+            extra_seconds=extra_seconds,
+            mode=mode,
+            protect=protect,
+            pad_seconds=pad_seconds,
+            rms_mix_rate=rms_mix_rate,
+        )
+        engine.load()
+        _PLAYBACK_CACHE = engine
+        _PLAYBACK_CACHE_KEY = key
+        return engine

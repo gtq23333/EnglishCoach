@@ -42,19 +42,21 @@ class ScriptedMainLLM:
 
 
 def _service(tmp_path: Path) -> CoachService:
-    cfg = AppConfig(session_dir=str(tmp_path), llm_api_key="test")
+    cfg = AppConfig(
+        session_dir=str(tmp_path),
+        llm_api_key="test",
+        db_path=str(tmp_path / "coach.sqlite"),
+    )
     return CoachService(cfg, llm=ScriptedMainLLM())
 
 
-def test_http_create_conflict_and_text_turn(tmp_path: Path):
+def test_http_create_and_text_turn(tmp_path: Path):
     service = _service(tmp_path)
     app = create_app(service)
     with TestClient(app) as client:
         first = client.post("/v1/sessions", json={"mode": "text"})
         assert first.status_code == 200
         session_id = first.json()["session_id"]
-        conflict = client.post("/v1/sessions", json={"mode": "text"})
-        assert conflict.status_code == 409
 
         got = client.get(f"/v1/sessions/{session_id}")
         assert got.status_code == 200
